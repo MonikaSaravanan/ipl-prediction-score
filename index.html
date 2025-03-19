@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPL Match Prediction</title>
+</head>
+<body>
+    <h2>IPL Match Prediction</h2>
+
+    <form id="authForm">
+        <label for="username">Username:</label>
+        <input type="text" id="username" required>
+        <button type="button" onclick="authenticateUser()">Login</button>
+    </form>
+    
+    <div id="predictionSection" style="display:none;">
+        <form id="iplForm">
+            <div id="matches"></div>
+            <button type="button" onclick="calculateScores()">Submit</button>
+        </form>
+        <h3>Results:</h3>
+        <div id="results"></div>
+    </div>
+    
+    <script>
+        const validUsers = ['User 1', 'User 2', 'User 3'];
+        let currentUser = null;
+        let userScores = JSON.parse(localStorage.getItem("userScores")) || { 'User 1': 0, 'User 2': 0, 'User 3': 0 };
+        let userPredictions = JSON.parse(localStorage.getItem("userPredictions")) || { 'User 1': {}, 'User 2': {}, 'User 3': {} };
+        
+        window.onload = function() {
+            displayResults(); // Load stored results on page load
+        };
+
+        function authenticateUser() {
+            const username = document.getElementById('username').value;
+            if (validUsers.includes(username)) {
+                currentUser = username;
+                document.getElementById('authForm').style.display = 'none';
+                document.getElementById('predictionSection').style.display = 'block';
+                createMatchSelection();
+            } else {
+                alert('Invalid user!');
+            }
+        }
+        
+        const matches = [
+            {id: 1, teams: ['MI', 'CSK'], winner: 'MI'},
+            {id: 2, teams: ['RCB', 'KKR'], winner: 'KKR'},
+            {id: 3, teams: ['SRH', 'DC'], winner: 'SRH'},
+            {id: 4, teams: ['LSG', 'GT'], winner: 'GT'}
+        ];
+
+        function createMatchSelection() {
+            const matchDiv = document.getElementById('matches');
+            matchDiv.innerHTML = '';
+            matches.forEach(match => {
+                const matchContainer = document.createElement('div');
+                matchContainer.innerHTML = `<h4>Match ${match.id}: ${match.teams[0]} vs ${match.teams[1]}</h4>`;
+                match.teams.forEach(team => {
+                    const checked = userPredictions[currentUser]?.[match.id] === team ? "checked" : "";
+                    matchContainer.innerHTML += `
+                        <label>
+                            <input type="radio" name="match${match.id}" value="${team}" ${checked} onclick="savePrediction(${match.id}, '${team}')"> ${team}
+                        </label>
+                    `;
+                });
+                matchDiv.appendChild(matchContainer);
+            });
+        }
+
+        function savePrediction(matchId, team) {
+            if (currentUser) {
+                userPredictions[currentUser][matchId] = team;
+                saveToLocalStorage(); // Save changes
+            }
+        }
+
+        function calculateScores() {
+            if (!currentUser) {
+                alert('Please login first!');
+                return;
+            }
+            let score = 0;
+            matches.forEach(match => {
+                if (userPredictions[currentUser][match.id] === match.winner) {
+                    score += 2;
+                }
+            });
+            userScores[currentUser] = score;
+            saveToLocalStorage(); // Save changes
+            displayResults();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem("userScores", JSON.stringify(userScores));
+            localStorage.setItem("userPredictions", JSON.stringify(userPredictions));
+        }
+
+        function displayResults() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            matches.forEach(match => {
+                resultsDiv.innerHTML += `<h4>Match ${match.id}: ${match.teams[0]} vs ${match.teams[1]}</h4>`;
+                validUsers.forEach(user => {
+                    const prediction = userPredictions[user]?.[match.id] || 'No Prediction';
+                    const points = prediction === match.winner ? 2 : 0;
+                    resultsDiv.innerHTML += `<p>${user}: Predicted - ${prediction}, Points - ${points}</p>`;
+                });
+            });
+            resultsDiv.innerHTML += `<h3>Total Scores:</h3>`;
+            for (const user in userScores) {
+                resultsDiv.innerHTML += `<p>${user}: ${userScores[user]} points</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
